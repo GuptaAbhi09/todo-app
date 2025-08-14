@@ -1,120 +1,157 @@
-import React, { useEffect, useState } from 'react';
-import Navbar from './components/Navbar';
-import AddField from './components/AddField';
-import Tasks from './components/Tasks';
-import SearchFilter from './components/SearchFilter';
-import { supabase } from './supabaseClient/supabaseClient';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import Navbar from "./components/Navbar";
+import AddField from "./components/AddField";
+import Tasks from "./components/Tasks";
+import SearchFilter from "./components/SearchFilter";
+import { supabase } from "./supabaseClient/supabaseClient";
+import toast from "react-hot-toast";
+import { useAuth } from "./context/AuthContext";
 
 const App = () => {
+  const { user, isGuest } = useAuth();
   const [tasks, setTasks] = useState([]);
 
-  // Fetch all tasks sorted by due date/time
+  // Fetch tasks from DB if logged in
   const fetchTasks = async () => {
+    if (!user) return; 
     const { data, error } = await supabase
-      .from('ToDo_List')
-      .select('*')
-      .order('duedate', { ascending: true })
-      .order('duetime', { ascending: true });
+      .from("ToDo_List")
+      .select("*")
+      .eq("user_id", user.id) // ✅ Only logged-in user's tasks
+      .order("duedate", { ascending: true })
+      .order("duetime", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching tasks:", error.message);
-    } else {
-      setTasks(data);
-    }
+    if (!error) setTasks(data);
   };
 
   useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  // Delete task by ID
-  const handleDelete = async (id) => {
-    const { error } = await supabase.from('ToDo_List').delete().eq('id', id);
-    if (error) {
-      toast.error("Delete failed");
-      console.error("Error:", error.message);
-    } else {
-      toast.success("Task deleted");
+    if (user) {
       fetchTasks();
+    } else if (isGuest) {
+      setTasks([]); // Guests start empty
     }
-  };
+  }, [user, isGuest]);
 
-  // Edit task data
-  const handleEditData = async (id, updatedTask) => {
-    const { error } = await supabase.from('ToDo_List').update(updatedTask).eq('id', id);
-    if (error) {
-      toast.error("Update failed");
-      console.error("Error:", error.message);
-    } else {
-      toast.success("Task updated");
-      fetchTasks();
-    }
-  };
-
-  // Add new task
+  // Common functions (use Supabase for users, local state for guests)
   const handleAddData = async (taskData) => {
-    const { error } = await supabase.from('ToDo_List').insert([taskData]);
-    if (error) {
-      toast.error("Add failed");
-      console.error("Error:", error.message);
+    if (isGuest) {
+      setTasks((prev) => [...prev, { ...taskData, id: Date.now() }]);
+      toast.success("Task added (Guest mode)");
     } else {
-      toast.success("Task added");
-      fetchTasks();
+      const { error } = await supabase.from("ToDo_List").insert([
+        {
+          ...taskData,
+          user_id: user.id, // ✅ Store current user's ID
+        },
+      ]);
+      if (!error) {
+        toast.success("Task added");
+        fetchTasks();
+      }
     }
   };
 
-  // Mark task completed or uncompleted
+  const handleDelete = async (id) => {
+    if (isGuest) {
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      toast.success("Task deleted (Guest mode)");
+    } else {
+      const { error } = await supabase.from("ToDo_List").delete().eq("id", id);
+      if (!error) {
+        toast.success("Task deleted");
+        fetchTasks();
+      }
+    }
+  };
+
+  const handleEditData = async (id, updatedTask) => {
+    if (isGuest) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? { ...task, ...updatedTask } : task))
+      );
+      toast.success("Task updated (Guest mode)");
+    } else {
+      const { error } = await supabase
+        .from("ToDo_List")
+        .update(updatedTask)
+        .eq("id", id);
+      if (!error) {
+        toast.success("Task updated");
+        fetchTasks();
+      }
+    }
+  };
+
   const isCompleted = async (id, current) => {
-    const { error } = await supabase
-      .from('ToDo_List')
-      .update({ isCompleted: !current })
-      .eq('id', id);
-    if (error) {
-      toast.error("Failed to update status");
-      console.error("Error:", error.message);
+    if (isGuest) {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id ? { ...task, isCompleted: !current } : task
+        )
+      );
     } else {
-      fetchTasks();
+      const { error } = await supabase
+        .from("ToDo_List")
+        .update({ isCompleted: !current })
+        .eq("id", id);
+      if (!error) fetchTasks();
     }
   };
 
-  // Delete all tasks
   const ClearAll = async () => {
-    const { error } = await supabase.from("ToDo_List").delete().neq("id", 0);
-    if (error) {
-      toast.error("Failed to clear");
-      console.error("Error:", error.message);
-    } else {
-      toast.success("All tasks cleared");
+    if (isGuest) {
       setTasks([]);
+      toast.success("All tasks cleared (Guest mode)");
+    } else {
+      const { error } = await supabase.from("ToDo_List").delete().neq("id", 0);
+      if (!error) {
+        toast.success("All tasks cleared");
+        setTasks([]);
+      }
     }
   };
 
-  // Filter helpers
+  // Filters (only for DB users)
   const fetchCompletedTasks = async () => {
-    const { data, error } = await supabase.from('ToDo_List').select('*').eq('isCompleted', true);
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("ToDo_List")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("isCompleted", true);
     if (!error) setTasks(data);
   };
 
   const fetchUnCompletedTasks = async () => {
-    const { data, error } = await supabase.from('ToDo_List').select('*').eq('isCompleted', false);
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("ToDo_List")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("isCompleted", false);
     if (!error) setTasks(data);
   };
 
   const fetchByPriority = async (priority) => {
-    const { data, error } = await supabase.from("ToDo_List").select("*").eq("priority", priority);
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("ToDo_List")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("priority", priority);
     if (!error) setTasks(data);
   };
 
   const fetchTasksBySearch = async (query) => {
+    if (!user) return;
     const { data, error } = await supabase
-      .from('ToDo_List')
-      .select('*')
+      .from("ToDo_List")
+      .select("*")
+      .eq("user_id", user.id)
       .ilike("task", `%${query}%`);
     if (!error) setTasks(data);
   };
 
-  
   return (
     <div>
       <Navbar />
@@ -133,7 +170,6 @@ const App = () => {
         handleEditData={handleEditData}
         isCompleted={isCompleted}
       />
-      
     </div>
   );
 };

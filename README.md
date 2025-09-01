@@ -3,10 +3,10 @@
 A simple and effective task management app built using **ReactJS** and **Supabase**. It allows users to create, manage, and organize their tasks with features like due dates, priorities, search, and filtering.
 
 ## 🚀 Live Demo  
-[Visit Now](https://todo-supabase.vercel.app)
+[Visit Now](https://todo-5dpvnuqhi-abhishek-guptas-projects-354f80fb.vercel.app/)
 
 ## 📂 GitHub Repository  
-[github.com/GuptaAbhi09/ToDo-Supabase](https://github.com/GuptaAbhi09/ToDo-Supabase)
+[github.com/GuptaAbhi09/todo-app](https://github.com/GuptaAbhi09/todo-app)
 
 ---
 
@@ -30,14 +30,14 @@ A simple and effective task management app built using **ReactJS** and **Supabas
 
 ## 📸 Screenshots
 
-Coming soon...
+![Home Page](./public/screenshot/Screenshot%202025-09-01%20162957.png)
 
 ---
 
 ## 📦 Setup Instructions
 
 1. Clone the repo  
-   `git clone https://github.com/GuptaAbhi09/ToDo-Supabase`
+   `git clone https://github.com/GuptaAbhi09/todo-app`
 
 2. Install dependencies  
    `npm install`

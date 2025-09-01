@@ -19,7 +19,7 @@ export default function Signup() {
     if (error) {
       setError(error.message);
     } else {
-      toast.success("Signup successful!")
+      toast.success("Signup successful! Please check your email to verify your account.")
       navigate("/login");
     }
     setLoading(false);
